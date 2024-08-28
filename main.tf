@@ -1,13 +1,38 @@
 # Resource Group
 resource "azurerm_resource_group" "rg" {
-  name     = "health-system-rg"
-  location = "West Europe"
+  name     = "ExBoard-rg"
+  location = var.location
+}
+
+resource "azurerm_virtual_network" "vnet" {
+  name                = "ExBoard-vnet"
+  address_space       = ["10.0.0.0/16"]
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+resource "azurerm_network_security_group" "ExBoardnsg" {
+  name                = "ExBoard-nsg"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+
+  security_rule {
+    name                       = "allow_https"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
 }
 
 # Azure AD B2C Tenant
 resource "azurerm_aadb2c_directory" "b2c" {
   country_code            = "DE"
-  data_residency_location = "Europe"
+  data_residency_location = var.DataLocation
   display_name            = "HealthSystemB2C"
   domain_name             = "healthsystemb2c.onmicrosoft.com"
   resource_group_name     = azurerm_resource_group.rg.name
@@ -15,17 +40,18 @@ resource "azurerm_aadb2c_directory" "b2c" {
 }
 
 # Health Data Services Workspace
-#resource "azurerm_healthcare_workspace" "healthworkspace" {
-#  name                = "health-data-workspace"
-#  resource_group_name = azurerm_resource_group.rg.name
-#  location            = azurerm_resource_group.rg.location
-#}
+resource "azurerm_healthcare_workspace" "healthworkspace" {
+  name                = "mhhhealthdataworkspace"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+}
 
 # DICOM Service
-#resource "azurerm_healthcare_dicom_service" "dicom" {
-#  name         = "dicom-service"
-#  workspace_id = azurerm_healthcare_workspace.healthworkspace.id
-#}
+resource "azurerm_healthcare_dicom_service" "dicom" {
+  name         = "dicomservice"
+  workspace_id = azurerm_healthcare_workspace.healthworkspace.id
+  location     = azurerm_resource_group.rg.location
+}
 
 # Data Lake Storage Gen2
 resource "azurerm_storage_account" "datalake" {
@@ -35,6 +61,35 @@ resource "azurerm_storage_account" "datalake" {
   account_tier             = "Standard"
   account_replication_type = "LRS" #dreimalige redundante Speicherung in einer Region
   is_hns_enabled           = true  #feingranulare Zugriffskontrolle wie von HIPAA gefordert. Azure Storage Account als Data Lake Storage Gen2
+}
+
+# Azure Data Factory
+resource "azurerm_data_factory" "adf" {
+  name                = "exboard-data-factory"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+
+  identity {
+    type = "SystemAssigned"
+  }
+}
+
+# Linked Service für das bestehende Data Lake Storage
+resource "azurerm_data_factory_linked_service_data_lake_storage_gen2" "datalake_link" {
+  name                 = "LinkedServiceDataLake"
+  data_factory_id      = azurerm_data_factory.adf.id
+  url                  = azurerm_storage_account.datalake.primary_dfs_endpoint
+  use_managed_identity = true
+}
+
+# Key Vault for secrets management
+resource "azurerm_key_vault" "vault" {
+  name                       = "health-system-vault"
+  resource_group_name        = azurerm_resource_group.rg.name
+  location                   = azurerm_resource_group.rg.location
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  sku_name                   = "standard"
+  soft_delete_retention_days = 7
 }
 
 resource "azurerm_storage_management_policy" "datalake_expire" {
@@ -98,21 +153,12 @@ resource "azurerm_storage_management_policy" "blobPDF_lifecycle" {
     }
   }
 }
-# Key Vault for secrets management
-#resource "azurerm_key_vault" "vault" {
-#  name                       = "health-system-vault"
-#  resource_group_name        = azurerm_resource_group.rg.name
-#  location                   = azurerm_resource_group.rg.location
-#  tenant_id                  = data.azurerm_client_config.current.tenant_id
-#  sku_name                   = "standard"
-#  soft_delete_retention_days = 7
-#}
 
 # Azure Communication Services for video conferencing
 resource "azurerm_communication_service" "acs" {
   name                = "health-system-acs"
   resource_group_name = azurerm_resource_group.rg.name
-  data_location       = "Europe"
+  data_location       = var.DataLocation
 }
 
 # Azure Cognitive Services for AI-based image analysis
