@@ -169,3 +169,17 @@ resource "azurerm_cognitive_account" "cognitive" {
   kind                = "ComputerVision"
   sku_name            = "S1"
 }
+
+resource "azurerm_resource_group_policy_assignment" "hipaa_assignment" {
+  name                 = "hipaa-compliance-assignment"
+  resource_group_id    = azurerm_resource_group.rg.id
+  policy_definition_id = azurerm_policy_set_definition.hipaa_compliance.id
+
+  parameters = <<PARAMETERS
+{
+  "effect": {
+    "value": "Audit"
+  }
+}
+PARAMETERS
+}
