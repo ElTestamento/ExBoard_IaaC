@@ -1,3 +1,4 @@
+#Variablendefinition sinnvoll für modulares Arbeiten und unendlich erweiterbar
 variable "location" {
   type        = string
   default     = "West Europe"

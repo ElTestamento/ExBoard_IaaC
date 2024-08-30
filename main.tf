@@ -1,9 +1,9 @@
-# Resource Group
+#Ressourcengruppe rg
 resource "azurerm_resource_group" "rg" {
   name     = "ExBoard-rg"
   location = var.location
 }
-
+#vnet
 resource "azurerm_virtual_network" "vnet" {
   name                = "ExBoard-vnet"
   address_space       = ["10.0.0.0/16"]
@@ -29,7 +29,7 @@ resource "azurerm_network_security_group" "ExBoardnsg" {
   }
 }
 
-# Azure AD B2C Tenant
+# Authentifikation------------B2c
 resource "azurerm_aadb2c_directory" "b2c" {
   country_code            = "DE"
   data_residency_location = var.DataLocation
@@ -39,33 +39,34 @@ resource "azurerm_aadb2c_directory" "b2c" {
   sku_name                = "PremiumP1"
 }
 
-# Health Data Services Workspace
+# Health Data Services -----------------------
 resource "azurerm_healthcare_workspace" "healthworkspace" {
   name                = "mhhhealthdataworkspace"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
 }
 
-# DICOM Service
+# DICOM ------------------------------
 resource "azurerm_healthcare_dicom_service" "dicom" {
   name         = "dicomservice"
   workspace_id = azurerm_healthcare_workspace.healthworkspace.id
   location     = azurerm_resource_group.rg.location
 }
 
-# Data Lake Storage Gen2
+# Data Lake Storage Gen2 -------------------
 resource "azurerm_storage_account" "datalake" {
-  name                     = "healthsystemdatalake"
+  name                     = "exboarddatalake"
   resource_group_name      = azurerm_resource_group.rg.name
   location                 = azurerm_resource_group.rg.location
   account_tier             = "Standard"
   account_replication_type = "LRS" #dreimalige redundante Speicherung in einer Region
-  is_hns_enabled           = true  #feingranulare Zugriffskontrolle wie von HIPAA gefordert. Azure Storage Account als Data Lake Storage Gen2
+  is_hns_enabled           = true  #feingranulare Zugriffskontrolle wie von HIPAA gefordert.
+  #Azure Storage Account als Data Lake Storage Gen2
 }
 
 # Azure Data Factory
 resource "azurerm_data_factory" "adf" {
-  name                = "exboard-data-factory"
+  name                = "exboarddatafactory"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
 
@@ -82,9 +83,9 @@ resource "azurerm_data_factory_linked_service_data_lake_storage_gen2" "datalake_
   use_managed_identity = true
 }
 
-# Key Vault for secrets management
+# Key Vault für Geheimnisschutz--------------------------------
 resource "azurerm_key_vault" "vault" {
-  name                       = "health-system-vault"
+  name                       = "exboardvault"
   resource_group_name        = azurerm_resource_group.rg.name
   location                   = azurerm_resource_group.rg.location
   tenant_id                  = data.azurerm_client_config.current.tenant_id
@@ -92,6 +93,7 @@ resource "azurerm_key_vault" "vault" {
   soft_delete_retention_days = 7
 }
 
+#HIPAA-Policy----------------------------------------
 resource "azurerm_storage_management_policy" "datalake_expire" {
   storage_account_id = azurerm_storage_account.datalake.id
 
@@ -117,16 +119,16 @@ resource "azurerm_logic_app_workflow" "scheduler" {
   location            = azurerm_resource_group.rg.location
 }
 
-# Azure Monitor
+# Azure Monitor: Überwacht!
 resource "azurerm_log_analytics_workspace" "monitor" {
-  name                = "health-system-monitor"
+  name                = "healthsystemmonitor"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   sku                 = "PerGB2018"
   retention_in_days   = 30
 }
 
-# Blob Storage for PDF documents
+# Blob Storage für PDF Dokumente und ähnliche Datenstrukturen
 resource "azurerm_storage_account" "blob_PDF" {
   name                     = "healthsystempdf"
   resource_group_name      = azurerm_resource_group.rg.name
@@ -135,7 +137,7 @@ resource "azurerm_storage_account" "blob_PDF" {
   account_replication_type = "LRS"
 }
 
-# Lifecycle Management Policy for PDF Storage
+# Verfallsdatum für Datenspeicherung: Management Policy für PDF Storage auf 30 Tage begrenzt!
 resource "azurerm_storage_management_policy" "blobPDF_lifecycle" {
   storage_account_id = azurerm_storage_account.blob_PDF.id
 
@@ -154,14 +156,14 @@ resource "azurerm_storage_management_policy" "blobPDF_lifecycle" {
   }
 }
 
-# Azure Communication Services for video conferencing
+# Azure Communication zum Einbinden von Teams uvm.
 resource "azurerm_communication_service" "acs" {
-  name                = "health-system-acs"
+  name                = "exboardacs"
   resource_group_name = azurerm_resource_group.rg.name
   data_location       = var.DataLocation
 }
 
-# Azure Cognitive Services for AI-based image analysis
+# Azure Cognitive Services: Einbinden einfacher AI-Tools
 resource "azurerm_cognitive_account" "cognitive" {
   name                = "health-system-cognitive"
   resource_group_name = azurerm_resource_group.rg.name

@@ -1,4 +1,4 @@
-# Configure the Azure provider
+# Azure provider von Terraform wird definiert in Quelle und Version
 terraform {
   required_providers {
     azurerm = {

@@ -1,13 +1,13 @@
-# App Service Plan
+# App------------
 resource "azurerm_service_plan" "exboard_plan" {
   name                = "exboard-app-service-plan"
   resource_group_name = azurerm_resource_group.rg.name
   location            = "northeurope"
   os_type             = "Windows"
-  sku_name            = "S1" # Premium v2 tier for better performance and scaling
+  sku_name            = "S1"
 }
 
-# App Service (Web App)
+# App Service (Web App)-----------------------------
 resource "azurerm_windows_web_app" "exboard_webapp" {
   name                = "exboard-frontend-${random_string.unique.result}"
   resource_group_name = azurerm_resource_group.rg.name
@@ -45,7 +45,7 @@ resource "azurerm_windows_web_app" "exboard_webapp" {
   https_only = true
 }
 
-# Application Insights for monitoring
+# Notwendige Insights zum korrekten monitoring
 resource "azurerm_application_insights" "exboard_insights" {
   name                = "exboard-insights"
   location            = azurerm_resource_group.rg.location
@@ -53,14 +53,14 @@ resource "azurerm_application_insights" "exboard_insights" {
   application_type    = "web"
 }
 
-# Random string for unique naming
+# erstellt zufälligen String für Bennenung der REssource App Service Plan.
 resource "random_string" "unique" {
   length  = 8
   special = false
   upper   = false
 }
 
-# Key Vault Access Policy for Web App
+# Key Vault Access Policy für Web App
 resource "azurerm_key_vault_access_policy" "webapp_policy" {
   key_vault_id = azurerm_key_vault.vault.id
   tenant_id    = data.azurerm_client_config.current.tenant_id
@@ -70,9 +70,4 @@ resource "azurerm_key_vault_access_policy" "webapp_policy" {
     "Get",
     "List"
   ]
-}
-
-# Output the Web App URL
-output "webapp_url" {
-  value = "https://${azurerm_windows_web_app.exboard_webapp.default_hostname}"
 }
