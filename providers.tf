@@ -1,4 +1,4 @@
-# Azure provider von Terraform wird definiert in Quelle und Version
+# Azure provider von Terraform wird hier definiert: in Quelle und Version
 terraform {
   required_providers {
     azurerm = {

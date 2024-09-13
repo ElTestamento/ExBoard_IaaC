@@ -1,3 +1,6 @@
+#Einige wichtige Policies für die HIPAA-Kriterien.
+#Wo notwendig und möglich ist mode auf "all" gesetzt, damit die Durchsetzung konsistent ist.
+
 resource "azurerm_policy_definition" "storage_encryption" {
   name         = "enforce-storage-encryption"
   policy_type  = "Custom"
